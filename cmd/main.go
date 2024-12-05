@@ -2,26 +2,11 @@ package main
 
 import (
 	"errors"
-	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"log/slog"
 	"net/http"
 )
-
-var upgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool {
-		return true // Cho phép mọi kết nối
-	},
-}
-var clients = make(map[*websocket.Conn]bool)
-var broadcast = make(chan []Device)
-
-type Device struct {
-	Name    string `json:"name"`
-	Service string `json:"service"`
-	Address string `json:"address"`
-}
 
 func main() {
 	// Echo instance
