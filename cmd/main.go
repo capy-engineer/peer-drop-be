@@ -6,6 +6,7 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 	"log/slog"
 	"net/http"
+	httpservice "peer-drop/internal/adapters/http"
 )
 
 func main() {
@@ -21,6 +22,7 @@ func main() {
 		return c.String(http.StatusOK, "pong")
 	})
 
+	e.GET("/signaling", httpservice.SignalingHandler)
 	// Start server
 	if err := e.Start(":8080"); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		slog.Error("failed to start server", "error", err)
