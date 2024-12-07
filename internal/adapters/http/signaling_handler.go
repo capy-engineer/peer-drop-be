@@ -42,6 +42,12 @@ func SignalingHandler(c echo.Context) error {
 		}
 		peerId = uid.String()
 		log.Printf("Generated new peerId: %s", peerId)
+
+		response := map[string]string{"peerId": peerId}
+		if err := c.JSON(http.StatusOK, response); err != nil {
+			log.Printf("Error sending UUID to client: %v", err)
+			return err
+		}
 	}
 
 	// Store the connection
