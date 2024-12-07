@@ -2,6 +2,7 @@ package httpservice
 
 import (
 	"encoding/json"
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
 	"log"
@@ -21,10 +22,10 @@ func SignalingHandler(c echo.Context) error {
 	conn, err := upgrade.Upgrade(c.Response(), c.Request(), nil)
 	if err != nil {
 		log.Println("Error upgrading connection:", err)
-		return err
+		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to upgrade to WebSocket")
 	}
 	defer func() {
-		peerId := c.QueryParam("peer_id")
+		peerId := c.QueryParam("peerId")
 		if peerId != "" {
 			peers.Delete(peerId)
 			log.Printf("Peer disconnected: %s", peerId)
@@ -34,8 +35,13 @@ func SignalingHandler(c echo.Context) error {
 
 	peerId := c.QueryParam("peerId")
 	if peerId == "" {
-		log.Println("Missing peer ID")
-		return echo.NewHTTPError(http.StatusBadRequest, "Missing peer ID")
+		uid, err := uuid.NewV7()
+		if err != nil {
+			log.Printf("Error generating UUID: %v", err)
+			return echo.NewHTTPError(http.StatusInternalServerError, "Failed to generate UUID")
+		}
+		peerId = uid.String()
+		log.Printf("Generated new peerId: %s", peerId)
 	}
 
 	// Store the connection
@@ -56,10 +62,16 @@ func SignalingHandler(c echo.Context) error {
 			continue
 		}
 
-		targetId := payload["targetId"].(string)
+		targetId, ok := payload["targetId"].(string)
+		if !ok || targetId == "" {
+			log.Printf("Missing or invalid targetId in message from %s", peerId)
+			continue
+		}
+
 		if targetConn, ok := peers.Load(targetId); ok {
-			// Forward message to target peer
-			targetConn.(*websocket.Conn).WriteMessage(websocket.TextMessage, msg)
+			if err := targetConn.(*websocket.Conn).WriteMessage(websocket.TextMessage, msg); err != nil {
+				log.Printf("Error forwarding message to %s: %v", targetId, err)
+			}
 		} else {
 			log.Printf("Target peer not found: %s", targetId)
 		}
