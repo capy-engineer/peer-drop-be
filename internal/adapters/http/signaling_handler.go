@@ -32,7 +32,7 @@ func SignalingHandler(c echo.Context) error {
 		conn.Close()
 	}()
 
-	peerId := c.QueryParam("peer_id")
+	peerId := c.QueryParam("peerId")
 	if peerId == "" {
 		log.Println("Missing peer ID")
 		return echo.NewHTTPError(http.StatusBadRequest, "Missing peer ID")
@@ -55,8 +55,8 @@ func SignalingHandler(c echo.Context) error {
 			log.Printf("Invalid message format: %v", err)
 			continue
 		}
-		
-		targetId := payload["target_id"].(string)
+
+		targetId := payload["targetId"].(string)
 		if targetConn, ok := peers.Load(targetId); ok {
 			// Forward message to target peer
 			targetConn.(*websocket.Conn).WriteMessage(websocket.TextMessage, msg)
