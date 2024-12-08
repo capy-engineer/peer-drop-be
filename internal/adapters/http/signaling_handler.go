@@ -7,6 +7,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"log"
 	"net/http"
+	"peer-drop/pkg/utils"
 	"sync"
 )
 
@@ -44,7 +45,7 @@ func SignalingHandler(c echo.Context) error {
 		log.Printf("Generated new peerId: %s", peerId)
 
 		response := map[string]string{"peerId": peerId}
-		if err := c.JSON(http.StatusOK, response); err != nil {
+		if err := c.JSON(http.StatusOK, utils.ResponseData(response)); err != nil {
 			log.Printf("Error sending UUID to client: %v", err)
 			return err
 		}
