@@ -23,6 +23,7 @@ func main() {
 	})
 
 	e.GET("/signaling", httpservice.SignalingHandler)
+	go httpservice.RemoveInactivePeers()
 	// Start server
 	if err := e.Start(":8080"); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		slog.Error("failed to start server", "error", err)
