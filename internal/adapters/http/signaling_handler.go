@@ -40,10 +40,10 @@ func SignalingHandler(c echo.Context) error {
 		log.Println("Error upgrading connection:", err)
 		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to upgrade to WebSocket")
 	}
-
-	peerId := c.QueryParam("peerId")
-	if peerId == "" {
-		peerId, err := uuid.NewV7()
+	var peerId string
+	clientPeerId := c.QueryParam("peerId")
+	if clientPeerId == "" {
+		uid, err := uuid.NewV7()
 		if err != nil {
 			log.Printf("Error generating UUID: %v", err)
 			err := conn.Close()
@@ -52,8 +52,9 @@ func SignalingHandler(c echo.Context) error {
 			}
 			return echo.NewHTTPError(http.StatusInternalServerError, "Failed to generate peerId")
 		}
+		peerId = uid.String()
 
-		err = conn.WriteMessage(websocket.TextMessage, []byte(peerId.String()))
+		err = conn.WriteMessage(websocket.TextMessage, []byte(peerId))
 		if err != nil {
 			log.Printf("Error sending UUID to client: %v", err)
 			err := conn.Close()
@@ -62,6 +63,16 @@ func SignalingHandler(c echo.Context) error {
 			}
 			return echo.NewHTTPError(http.StatusInternalServerError, "Failed to send peerId")
 		}
+	} else {
+		if _, err := uuid.Parse(peerId); err != nil {
+			log.Printf("Invalid peerId: %s", peerId)
+			err := conn.Close()
+			if err != nil {
+				return err
+			}
+			return echo.NewHTTPError(http.StatusBadRequest, "Invalid peerId")
+		}
+		peerId = clientPeerId
 	}
 
 	// Close old connection if it exists

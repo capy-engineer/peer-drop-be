@@ -22,7 +22,7 @@ func main() {
 		return c.String(http.StatusOK, "pong")
 	})
 
-	e.GET("/signaling", httpservice.SignalingHandler)
+	e.GET("/ws", httpservice.SignalingHandler)
 	go httpservice.RemoveInactivePeers()
 	// Start server
 	if err := e.Start(":8080"); err != nil && !errors.Is(err, http.ErrServerClosed) {
