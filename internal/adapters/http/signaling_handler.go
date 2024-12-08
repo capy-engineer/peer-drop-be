@@ -25,9 +25,7 @@ var upgrade = websocket.Upgrader{
 	},
 }
 
-var peers sync.Map
-
-const inactiveTimeout = 10 * time.Minute
+var Peers sync.Map
 
 type PeerConnection struct {
 	Conn       *websocket.Conn
@@ -76,7 +74,7 @@ func SignalingHandler(c echo.Context) error {
 	}
 
 	// Close old connection if it exists
-	if v, ok := peers.Load(peerId); ok {
+	if v, ok := Peers.Load(peerId); ok {
 		oldPeer := v.(PeerConnection)
 		err := oldPeer.Conn.Close()
 		if err != nil {
@@ -85,17 +83,17 @@ func SignalingHandler(c echo.Context) error {
 		log.Printf("Closed old connection for peerId: %s", peerId)
 	}
 
-	peers.Store(peerId, PeerConnection{Conn: conn, LastActive: time.Now()})
+	Peers.Store(peerId, PeerConnection{Conn: conn, LastActive: time.Now()})
 	log.Printf("Stored new connection for peerId: %s", peerId)
 
 	defer func() {
-		if v, ok := peers.Load(peerId); ok {
+		if v, ok := Peers.Load(peerId); ok {
 			peer := v.(PeerConnection)
 			err := peer.Conn.Close()
 			if err != nil {
 				return
 			}
-			peers.Delete(peerId)
+			Peers.Delete(peerId)
 			log.Printf("Removed connection for peerId: %s", peerId)
 		}
 	}()
@@ -106,10 +104,10 @@ func SignalingHandler(c echo.Context) error {
 		defer ticker.Stop()
 		for {
 			<-ticker.C
-			if _, ok := peers.Load(peerId); !ok {
+			if _, ok := Peers.Load(peerId); !ok {
 				return // Stop heartbeat if peer is removed
 			}
-			peers.Store(peerId, PeerConnection{Conn: conn, LastActive: time.Now()})
+			Peers.Store(peerId, PeerConnection{Conn: conn, LastActive: time.Now()})
 		}
 	}()
 
@@ -142,7 +140,7 @@ func SignalingHandler(c echo.Context) error {
 			continue
 		}
 
-		if targetPeer, ok := peers.Load(targetId); ok {
+		if targetPeer, ok := Peers.Load(targetId); ok {
 			targetConn := targetPeer.(PeerConnection).Conn
 			if err := targetConn.WriteMessage(websocket.TextMessage, msg); err != nil {
 				log.Printf("Error forwarding message to %s: %v", targetId, err)
@@ -157,25 +155,4 @@ func SignalingHandler(c echo.Context) error {
 	}
 
 	return nil
-}
-
-func RemoveInactivePeers() {
-	ticker := time.NewTicker(1 * time.Minute)
-	defer ticker.Stop()
-	for {
-		<-ticker.C
-		peers.Range(func(key, value interface{}) bool {
-			peerId := key.(string)
-			peer := value.(PeerConnection)
-			if time.Since(peer.LastActive) > inactiveTimeout {
-				err := peer.Conn.Close()
-				if err != nil {
-					return false
-				}
-				peers.Delete(peerId)
-				log.Printf("Removed inactive peer: %s", peerId)
-			}
-			return true
-		})
-	}
 }

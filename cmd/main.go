@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	httpservice "peer-drop/internal/adapters/http"
+	"peer-drop/pkg/utils"
 )
 
 func main() {
@@ -23,7 +24,7 @@ func main() {
 	})
 
 	e.GET("/ws", httpservice.SignalingHandler)
-	go httpservice.RemoveInactivePeers()
+	go utils.RemoveInactivePeers()
 	// Start server
 	if err := e.Start(":8080"); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		slog.Error("failed to start server", "error", err)
