@@ -2,7 +2,7 @@ package utils
 
 import (
 	"log"
-	httpservice "peer-drop/internal/adapters/http"
+	"peer-drop/internal/core/entity"
 	"time"
 )
 
@@ -11,15 +11,15 @@ func RemoveInactivePeers() {
 	defer ticker.Stop()
 	for {
 		<-ticker.C
-		httpservice.Peers.Range(func(key, value interface{}) bool {
+		entity.Peers.Range(func(key, value interface{}) bool {
 			peerId := key.(string)
-			peer := value.(httpservice.PeerConnection)
+			peer := value.(entity.PeerConnection)
 			if time.Since(peer.LastActive) > InactiveTimeout {
 				err := peer.Conn.Close()
 				if err != nil {
 					return false
 				}
-				httpservice.Peers.Delete(peerId)
+				entity.Peers.Delete(peerId)
 				log.Printf("Removed inactive peer: %s", peerId)
 			}
 			return true

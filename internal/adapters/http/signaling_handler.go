@@ -2,9 +2,10 @@ package httpservice
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
-	"sync"
+	"peer-drop/internal/core/entity"
 	"time"
 
 	"github.com/google/uuid"
@@ -25,57 +26,39 @@ var upgrade = websocket.Upgrader{
 	},
 }
 
-var Peers sync.Map
-
-type PeerConnection struct {
-	Conn       *websocket.Conn
-	LastActive time.Time
-}
-
 func SignalingHandler(c echo.Context) error {
 	conn, err := upgrade.Upgrade(c.Response(), c.Request(), nil)
 	if err != nil {
 		log.Println("Error upgrading connection:", err)
 		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to upgrade to WebSocket")
 	}
-	var peerId string
-	clientPeerId := c.QueryParam("peerId")
-	if clientPeerId == "" {
-		uid, err := uuid.NewV7()
-		if err != nil {
-			log.Printf("Error generating UUID: %v", err)
-			err := conn.Close()
-			if err != nil {
-				return err
-			}
-			return echo.NewHTTPError(http.StatusInternalServerError, "Failed to generate peerId")
-		}
-		peerId = uid.String()
 
-		err = conn.WriteMessage(websocket.TextMessage, []byte(peerId))
+	var peerId string
+
+	uid, err := uuid.NewV7()
+	if err != nil {
+		log.Printf("Error generating UUID: %v", err)
+		err := conn.Close()
 		if err != nil {
-			log.Printf("Error sending UUID to client: %v", err)
-			err := conn.Close()
-			if err != nil {
-				return err
-			}
-			return echo.NewHTTPError(http.StatusInternalServerError, "Failed to send peerId")
+			return err
 		}
-	} else {
-		if _, err := uuid.Parse(peerId); err != nil {
-			log.Printf("Invalid peerId: %s", peerId)
-			err := conn.Close()
-			if err != nil {
-				return err
-			}
-			return echo.NewHTTPError(http.StatusBadRequest, "Invalid peerId")
+		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to generate peerId")
+	}
+	peerId = uid.String()
+
+	err = conn.WriteMessage(websocket.TextMessage, []byte(peerId))
+	if err != nil {
+		log.Printf("Error sending UUID to client: %v", err)
+		err := conn.Close()
+		if err != nil {
+			return err
 		}
-		peerId = clientPeerId
+		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to send peerId")
 	}
 
 	// Close old connection if it exists
-	if v, ok := Peers.Load(peerId); ok {
-		oldPeer := v.(PeerConnection)
+	if v, ok := entity.Peers.Load(peerId); ok {
+		oldPeer := v.(entity.PeerConnection)
 		err := oldPeer.Conn.Close()
 		if err != nil {
 			return err
@@ -83,17 +66,17 @@ func SignalingHandler(c echo.Context) error {
 		log.Printf("Closed old connection for peerId: %s", peerId)
 	}
 
-	Peers.Store(peerId, PeerConnection{Conn: conn, LastActive: time.Now()})
+	entity.Peers.Store(peerId, entity.PeerConnection{Conn: conn, LastActive: time.Now()})
 	log.Printf("Stored new connection for peerId: %s", peerId)
 
 	defer func() {
-		if v, ok := Peers.Load(peerId); ok {
-			peer := v.(PeerConnection)
+		if v, ok := entity.Peers.Load(peerId); ok {
+			peer := v.(entity.PeerConnection)
 			err := peer.Conn.Close()
 			if err != nil {
-				return
+				log.Printf("Error closing connection for peerId: %s, %v", peerId, err)
 			}
-			Peers.Delete(peerId)
+			entity.Peers.Delete(peerId)
 			log.Printf("Removed connection for peerId: %s", peerId)
 		}
 	}()
@@ -104,10 +87,10 @@ func SignalingHandler(c echo.Context) error {
 		defer ticker.Stop()
 		for {
 			<-ticker.C
-			if _, ok := Peers.Load(peerId); !ok {
+			if _, ok := entity.Peers.Load(peerId); !ok {
 				return // Stop heartbeat if peer is removed
 			}
-			Peers.Store(peerId, PeerConnection{Conn: conn, LastActive: time.Now()})
+			entity.Peers.Store(peerId, entity.PeerConnection{Conn: conn, LastActive: time.Now()})
 		}
 	}()
 
@@ -140,16 +123,19 @@ func SignalingHandler(c echo.Context) error {
 			continue
 		}
 
-		if targetPeer, ok := Peers.Load(targetId); ok {
-			targetConn := targetPeer.(PeerConnection).Conn
+		if targetPeer, ok := entity.Peers.Load(targetId); ok {
+			targetConn := targetPeer.(entity.PeerConnection).Conn
 			if err := targetConn.WriteMessage(websocket.TextMessage, msg); err != nil {
 				log.Printf("Error forwarding message to %s: %v", targetId, err)
 			}
 		} else {
-			log.Printf("Target peer not found: %s", targetId)
-			err := conn.WriteMessage(websocket.TextMessage, []byte("Error: Target peer not found"))
+			err := conn.WriteJSON(map[string]string{
+				"type":  "error",
+				"error": "Target peer not found",
+				"info":  fmt.Sprintf("TargetId %s does not exist or is offline", targetId),
+			})
 			if err != nil {
-				return err
+				log.Printf("Error sending error message to %s: %v", peerId, err)
 			}
 		}
 	}

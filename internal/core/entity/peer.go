@@ -1,5 +1,14 @@
 package entity
 
-type Peer struct {
-	Id string `json:"id"`
+import (
+	"github.com/gorilla/websocket"
+	"sync"
+	"time"
+)
+
+var Peers sync.Map
+
+type PeerConnection struct {
+	Conn       *websocket.Conn
+	LastActive time.Time
 }
