@@ -91,7 +91,17 @@ func ConnectHandler(c echo.Context) error {
 				log.Printf("Error notifying target peer %s: %v", peerTarget, err)
 			}
 		} else {
+
 			log.Printf("Target peer %s not found", peerTarget)
+			if v, ok := entity.Peers.Load(peerId); ok {
+				peer := v.(entity.PeerConnection)
+				err := peer.Conn.Close()
+				if err != nil {
+					log.Printf("Error closing connection for peerId: %s, %v", peerId, err)
+				}
+				entity.Peers.Delete(peerId)
+				log.Printf("Removed connection for peerId: %s", peerId)
+			}
 		}
 	}
 
