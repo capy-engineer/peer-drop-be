@@ -24,6 +24,8 @@ func main() {
 	})
 
 	e.GET("/ws", httpservice.SignalingHandler)
+	e.GET("/connect", httpservice.ConnectHandler)
+	
 	go utils.RemoveInactivePeers()
 	// Start server
 	if err := e.Start(":8080"); err != nil && !errors.Is(err, http.ErrServerClosed) {
