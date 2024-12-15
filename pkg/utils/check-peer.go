@@ -12,12 +12,21 @@ func RemoveInactivePeers() {
 	for {
 		<-ticker.C
 		entity.Peers.Range(func(key, value interface{}) bool {
-			peerId := key.(string)
-			peer := value.(entity.PeerConnection)
+			peerId, ok := key.(string)
+			if !ok {
+				log.Println("Invalid key type in Peers map")
+				return true
+			}
+			peer, ok := value.(entity.PeerConnection)
+			if !ok {
+				log.Println("Invalid value type in Peers map")
+				return true // Continue the iteration
+			}
 			if time.Since(peer.LastActive) > InactiveTimeout {
 				err := peer.Conn.Close()
 				if err != nil {
-					return false
+					log.Printf("Failed to close connection for peer %s: %v", peerId, err)
+					return true // Continue to the next peer
 				}
 				entity.Peers.Delete(peerId)
 				log.Printf("Removed inactive peer: %s", peerId)

@@ -2,4 +2,4 @@ package utils
 
 import "time"
 
-const InactiveTimeout = 10 * time.Minute
+const InactiveTimeout = 5 * time.Minute
