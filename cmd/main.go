@@ -1,32 +1,41 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
 	"log/slog"
 	"net/http"
-	httpservice "peer-drop/internal/adapters/http"
+	"os"
+	"os/signal"
+	"peer-drop/internal/server"
 	"peer-drop/pkg/utils"
+	"syscall"
+	"time"
 )
 
 func main() {
-	// Echo instance
-	e := echo.New()
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
-	// Middleware
-	e.Use(middleware.Logger())
-	e.Use(middleware.Recover())
-
-	// Routes
-	e.GET("/ping", func(c echo.Context) error {
-		return c.String(http.StatusOK, "pong")
-	})
-
-	e.GET("/ws", httpservice.SignalingHandler)
-	e.GET("/connect", httpservice.ConnectHandler)
-	
+	// Initialize Echo
+	e := server.InitServer()
+	go startServer(e)
 	go utils.RemoveInactivePeers()
+
+	<-stop
+	slog.Info("Received shutdown signal, initiating graceful shutdown...")
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := e.Shutdown(ctx); err != nil {
+		slog.Error("Error shutting down the server", "error", err)
+	} else {
+		slog.Info("Server shutdown complete")
+	}
+}
+
+func startServer(e *echo.Echo) {
 	// Start server
 	if err := e.Start(":8080"); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		slog.Error("failed to start server", "error", err)
