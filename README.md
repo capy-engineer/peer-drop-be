@@ -1,1 +1,1 @@
-![plot](signaling-diagram.png)
+![plot](~/docs/signaling-diagram.png)
