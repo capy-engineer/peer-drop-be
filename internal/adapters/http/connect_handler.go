@@ -81,15 +81,13 @@ func ConnectHandler(c echo.Context) error {
 			log.Printf("Removed connection for peerId: %s", peerId)
 		}
 	}()
-
 	// If peerTarget is specified, connect to peer
 	if peerTarget != "" {
 		if targetPeer, ok := entity.Peers.Load(peerTarget); ok {
 			targetConn := targetPeer.(entity.PeerConnection).Conn
 			err := targetConn.WriteJSON(map[string]string{
-				"type":    "connect",
-				"peerId":  peerId,
-				"address": c.RealIP(),
+				"type":   "connect",
+				"peerId": peerId,
 			})
 			if err != nil {
 				log.Printf("Error notifying target peer %s: %v", peerTarget, err)
