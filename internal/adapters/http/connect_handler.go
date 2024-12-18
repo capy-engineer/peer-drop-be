@@ -46,7 +46,7 @@ func ConnectHandler(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to generate peerId")
 	}
 	peerId = uid.String()
-	err = conn.WriteMessage(websocket.TextMessage, []byte(peerId))
+	err = conn.WriteJSON(map[string]string{"peerId": peerId})
 	if err != nil {
 		log.Printf("Error sending UUID to client: %v", err)
 		err := conn.Close()
