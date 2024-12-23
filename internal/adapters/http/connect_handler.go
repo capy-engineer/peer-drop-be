@@ -81,6 +81,7 @@ func ConnectHandler(c echo.Context) error {
 			log.Printf("Removed connection for peerId: %s", peerId)
 		}
 	}()
+
 	// If peerTarget is specified, connect to peer
 	if peerTarget != "" {
 		if targetPeer, ok := entity.Peers.Load(peerTarget); ok {

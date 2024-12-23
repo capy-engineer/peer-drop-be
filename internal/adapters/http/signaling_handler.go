@@ -125,7 +125,7 @@ func SignalingHandler(c echo.Context) error {
 
 		if targetPeer, ok := entity.Peers.Load(targetId); ok {
 			targetConn := targetPeer.(entity.PeerConnection).Conn
-			if err := targetConn.WriteMessage(websocket.TextMessage, msg); err != nil {
+			if err := targetConn.WriteJSON(msg); err != nil {
 				log.Printf("Error forwarding message to %s: %v", targetId, err)
 			}
 		} else {
