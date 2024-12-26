@@ -122,10 +122,11 @@ func SignalingHandler(c echo.Context) error {
 			}
 			continue
 		}
-
+		payload["senderId"] = peerId
+		fmt.Println("user 	A", payload)
 		if targetPeer, ok := entity.Peers.Load(targetId); ok {
 			targetConn := targetPeer.(entity.PeerConnection).Conn
-			if err := targetConn.WriteJSON(msg); err != nil {
+			if err := targetConn.WriteJSON(payload); err != nil {
 				log.Printf("Error forwarding message to %s: %v", targetId, err)
 			}
 		} else {

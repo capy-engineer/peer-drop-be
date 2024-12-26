@@ -46,15 +46,6 @@ func ConnectHandler(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to generate peerId")
 	}
 	peerId = uid.String()
-	err = conn.WriteJSON(map[string]string{"peerId": peerId})
-	if err != nil {
-		log.Printf("Error sending UUID to client: %v", err)
-		err := conn.Close()
-		if err != nil {
-			return err
-		}
-		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to send peerId")
-	}
 
 	// Close old connection if it exists
 	if v, ok := entity.Peers.Load(peerId); ok {
@@ -150,9 +141,12 @@ func ConnectHandler(c echo.Context) error {
 			continue
 		}
 
+		payload["senderId"] = peerId
+		fmt.Println("user B", payload)
+
 		if targetPeer, ok := entity.Peers.Load(targetId); ok {
 			targetConn := targetPeer.(entity.PeerConnection).Conn
-			if err := targetConn.WriteMessage(websocket.TextMessage, msg); err != nil {
+			if err := targetConn.WriteJSON(payload); err != nil {
 				log.Printf("Error forwarding message to %s: %v", targetId, err)
 			}
 		} else {
