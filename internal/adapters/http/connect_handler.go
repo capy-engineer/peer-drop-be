@@ -142,7 +142,6 @@ func ConnectHandler(c echo.Context) error {
 		}
 
 		payload["senderId"] = peerId
-		fmt.Println("user B", payload)
 
 		if targetPeer, ok := entity.Peers.Load(targetId); ok {
 			targetConn := targetPeer.(entity.PeerConnection).Conn
