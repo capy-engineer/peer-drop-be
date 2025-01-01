@@ -51,9 +51,9 @@ jobs:
       - name: Deploy to production
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.STAGING_HOST }}
-          username: ${{ secrets.STAGING_USERNAME }}
-          key: ${{ secrets.STAGING_KEY }}
+          host: ${{ secrets.PRODUCTION_HOST }}
+          username: ${{ secrets.PRODUCTION_USERNAME }}
+          key: ${{ secrets.PRODUCTION_KEY }}
           script: |
             # Check if the Docker network exists, if not, create it
             if ! docker network inspect peer-drop &>/dev/null; then
